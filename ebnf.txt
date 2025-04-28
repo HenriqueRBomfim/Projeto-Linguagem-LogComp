@@ -1,0 +1,50 @@
+program         ::= "{" NEWLINE { statement } "}" ;
+
+statement       ::= var_decl
+                  | assign_stmt
+                  | println_stmt
+                  | if_stmt
+                  | while_stmt
+                  | block
+                  | NEWLINE ;
+
+var_decl        ::= "var" identifier type_decl [ "=" expression ] ;
+
+type_decl       ::= "int" | "string" ;
+
+assign_stmt     ::= identifier "=" expression ;
+
+println_stmt    ::= "Println" "(" expression ")" ;
+
+if_stmt         ::= "if" expression "{" NEWLINE block "}" [ "else" "{" NEWLINE block "}" ] ;
+
+while_stmt      ::= "for" expression "{" NEWLINE block "}" ;
+
+block           ::= "{" NEWLINE { statement } "}" ;
+
+expression      ::= bexpression ;
+
+bexpression     ::= bterm { "||" bterm } ;
+
+bterm           ::= rexp { "&&" rexp } ;
+
+rexp            ::= expr [ ("<" | ">" | "==") expr ] ;
+
+expr            ::= term { ("+" | "-") term } ;
+
+term            ::= factor { ("*" | "/") factor } ;
+
+factor          ::= ("+" | "-" | "!") factor
+                  | integer
+                  | string
+                  | identifier
+                  | "Scan" "(" ")"
+                  | "(" expression ")" ;
+
+identifier      ::= letter { letter | digit | "_" } ;
+
+integer         ::= digit { digit } ;
+
+string          ::= '"' { any_character_except_quote } '"' ;
+
+NEWLINE         ::= '\n' ;
