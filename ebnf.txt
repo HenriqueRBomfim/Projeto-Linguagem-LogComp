@@ -1,45 +1,55 @@
-program         ::= "{" NEWLINE { statement } "}" ;
+program         ::= "Campanha" NEWLINE { statement } "FimCampanha" ;
 
-statement       ::= var_decl
+statement       ::= entity_decl
+                  | var_decl
                   | assign_stmt
-                  | println_stmt
+                  | narrate_stmt
                   | if_stmt
                   | while_stmt
                   | block
                   | NEWLINE ;
 
-var_decl        ::= "var" identifier type_decl [ "=" expression ] ;
+entity_decl     ::= "criar" entity_type identifier "{" NEWLINE { attribute_assign } "}" ;
 
-type_decl       ::= "int" | "string" ;
+entity_type     ::= "personagem" | "monstro" | "item" ;
+
+attribute_assign ::= identifier "=" expression ;
+
+var_decl        ::= "definir" identifier type_decl [ "=" expression ] ;
+
+type_decl       ::= "int" | "string" | "bool" ;
 
 assign_stmt     ::= identifier "=" expression ;
 
-println_stmt    ::= "Println" "(" expression ")" ;
+narrate_stmt    ::= "narre" "(" expression ")" ;
 
-if_stmt         ::= "if" expression "{" NEWLINE block "}" [ "else" "{" NEWLINE block "}" ] ;
+if_stmt         ::= "se" expression "{" NEWLINE block "}" [ "senao" "{" NEWLINE block "}" ] ;
 
-while_stmt      ::= "for" expression "{" NEWLINE block "}" ;
+while_stmt      ::= "enquanto" expression "{" NEWLINE block "}" ;
 
 block           ::= "{" NEWLINE { statement } "}" ;
 
 expression      ::= bexpression ;
 
-bexpression     ::= bterm { "||" bterm } ;
+bexpression     ::= bterm { "ou" bterm } ;
 
-bterm           ::= rexp { "&&" rexp } ;
+bterm           ::= rexp { "e" rexp } ;
 
-rexp            ::= expr [ ("<" | ">" | "==") expr ] ;
+rexp            ::= expr [ ("<" | ">" | "igual" | "!=") expr ] ;
 
 expr            ::= term { ("+" | "-") term } ;
 
 term            ::= factor { ("*" | "/") factor } ;
 
-factor          ::= ("+" | "-" | "!") factor
+factor          ::= ("+" | "-" | "nao") factor
                   | integer
                   | string
+                  | boolean
                   | identifier
-                  | "Scan" "(" ")"
+                  | "rolar_dado" "(" integer ")" 
                   | "(" expression ")" ;
+
+boolean         ::= "verdadeiro" | "falso" ;
 
 identifier      ::= letter { letter | digit | "_" } ;
 
