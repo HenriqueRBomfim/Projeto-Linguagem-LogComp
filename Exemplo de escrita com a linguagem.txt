@@ -26,8 +26,3 @@ enquanto Orc_vida > 0 {
     turno = turno + 1
 }
 FimCampanha
-
-
-Objetivo da Linguagem:
-
-Tornar a criação de aventuras RPG mais dinâmica e acessível através de programação estruturada e divertida.

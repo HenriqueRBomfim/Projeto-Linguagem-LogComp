@@ -21,3 +21,19 @@ A linguagem é simples, intuitiva e usa termos próprios do universo de RPG para
 
 - Todo programa começa com `Campanha` e termina com `FimCampanha`.
 - Dentro do programa, podem ser criadas entidades, variáveis, condições, loops e narrativas.
+
+# Análise Léxica e Sintática
+
+Este projeto utiliza Flex e Bison para realizar a análise léxica e sintática de uma nova linguagem definida em ebnf.txt.
+
+## Compilação
+
+Para compilar o projeto, execute o comando `make` no terminal.
+
+## Execução
+
+Após a compilação, execute o programa com `./main` e forneça um arquivo de entrada.
+
+## Exemplo
+
+O arquivo `example.camp` contém um exemplo de código na nova linguagem.
