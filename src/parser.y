@@ -17,6 +17,10 @@ typedef struct {
 VarEntry var_table[MAX_VARS];
 int var_count = 0;
 
+typedef struct {
+    char* nome;
+} fn_data;
+
 // Função para buscar variável
 int get_var(const char* name) {
     for (int i = 0; i < var_count; i++) {
@@ -110,21 +114,41 @@ typedef struct {
 } PersonagemPadrao;
 PersonagemPadrao padrao = { { { {0} } }, 0, NULL, 0 };
 
-void criar_personagem(const char* nome, PersonagemPadrao* padrao) {
+void criar_personagem(const char* nome, const PersonagemPadrao* padrao) {
+    printf("[DEBUG] criar_personagem: nome=%s, padrao=%p\n", nome, (void*)padrao);
+    printf("[DEBUG] padrao->attr_count=%d\n", padrao->attr_count);
+    printf("[DEBUG] padrao->inventario=%s\n", padrao->inventario ? padrao->inventario : "(null)");
+
     if (personagem_count < MAX_PERSONAGENS) {
+        // Cópia segura do nome
         strncpy(personagens[personagem_count].nome, nome, 63);
         personagens[personagem_count].nome[63] = '\0';
-        // Copia todos os atributos do padrao para o personagem
+
+        // Cópia dos atributos
         for (int i = 0; i < padrao->attr_count; i++) {
+            printf("[DEBUG] Copiando atributo %d: %s=%d\n", i, padrao->atributos[i].nome, padrao->atributos[i].valor);
             strncpy(personagens[personagem_count].atributos[i].nome, padrao->atributos[i].nome, 63);
             personagens[personagem_count].atributos[i].nome[63] = '\0';
             personagens[personagem_count].atributos[i].valor = padrao->atributos[i].valor;
         }
         personagens[personagem_count].attr_count = padrao->attr_count;
-        personagens[personagem_count].inventario = padrao->inventario ? strdup(padrao->inventario) : NULL;
+
+        // Cópia segura do inventário
+        if (padrao->inventario) {
+            personagens[personagem_count].inventario = strdup(padrao->inventario);
+            printf("[DEBUG] Inventario copiado: %s\n", personagens[personagem_count].inventario);
+        } else {
+            personagens[personagem_count].inventario = NULL;
+            printf("[DEBUG] Inventario NULL\n");
+        }
+
         personagem_count++;
+        printf("[DEBUG] personagem_count agora: %d\n", personagem_count);
+    } else {
+        printf("[DEBUG] Limite de personagens atingido!\n");
     }
 }
+
 extern FILE *yyin;
 void yyerror(const char *s);
 int yylex(void);
@@ -175,19 +199,23 @@ program:
         {
             block_list_t* bl = $2;
             for (int i = 0; i < bl->count; i++) {
+                printf("[DEBUG] Executando bloco %d\n", i);
                 bl->fns[i]();
             }
             free(bl);
             printf("Campanha finalizada!\n");
+            printf("[DEBUG] Fim do programa\n");
         }
     | CAMPANHA NEWLINE statements FIM_CAMPANHA
         {
             block_list_t* bl = $3;
             for (int i = 0; i < bl->count; i++) {
+                printf("[DEBUG] Executando bloco %d\n", i);
                 bl->fns[i]();
             }
             free(bl);
             printf("Campanha finalizada!\n");
+            printf("[DEBUG] Fim do programa\n");
         }
     ;
 
@@ -239,6 +267,7 @@ entity_decl:
             // Nenhum IDENTIFIER de nome aqui, apenas define o padrão.
             // A lógica de attribute_assigns já lida com os IDENTIFIERs de atributos.
             void fn(void) {
+                printf("[DEBUG] Entrou no fn do statement entity_decl 1\n");
                 padrao.definido = 1;
                 print_slow("Padrão de personagem definido!", 10000);
             }
@@ -246,20 +275,31 @@ entity_decl:
         }
     | CRIAR PERSONAGEM PADRAO IDENTIFIER opt_newline
         {
-            char* nome_personagem_copiado = strdup($4);
+            // Cria uma struct dinâmica para cada bloco
+            typedef struct { char* nome; } bloco_nome_t;
+            bloco_nome_t* bloco = malloc(sizeof(bloco_nome_t));
+            bloco->nome = strdup($4);
             free($4);
-            // Cria uma struct para capturar o ponteiro
-            struct fn_data {
-                char* nome;
-            };
-            struct fn_data* data = malloc(sizeof(struct fn_data));
-            data->nome = nome_personagem_copiado;
+
+            void* bloco_ptr = bloco; // Garante que cada fn capture seu próprio ponteiro
+
             void fn(void) {
+                bloco_nome_t* bloco = (bloco_nome_t*)bloco_ptr;
+                printf("[DEBUG] Entrou no fn do statement entity_decl 2\n");
                 if (padrao.definido) {
-                    criar_personagem(data->nome, &padrao);
+                    criar_personagem(bloco->nome, &padrao);
                     char buffer[256];
-                    snprintf(buffer, sizeof(buffer), "Personagem %s criado com padrão.", data->nome);
+                    snprintf(buffer, sizeof(buffer), "Personagem %s criado com padrão.", bloco->nome);
                     print_slow(buffer, 10000);
+                    int idx = personagem_count - 1;
+                    for (int i = 0; i < personagens[idx].attr_count; i++) {
+                        snprintf(buffer, sizeof(buffer), "  [DEBUG] %s = %d", personagens[idx].atributos[i].nome, personagens[idx].atributos[i].valor);
+                        print_slow(buffer, 10000);
+                    }
+                    if (personagens[idx].inventario) {
+                        snprintf(buffer, sizeof(buffer), "  [DEBUG] Inventario: [%s]", personagens[idx].inventario);
+                        print_slow(buffer, 10000);
+                    }
                     for (int i = 0; i < padrao.attr_count; i++) {
                         snprintf(buffer, sizeof(buffer), "  - %s = %d", padrao.atributos[i].nome, padrao.atributos[i].valor);
                         print_slow(buffer, 10000);
@@ -271,19 +311,18 @@ entity_decl:
                 } else {
                     print_slow("Erro: padrão de personagem não definido!", 10000);
                 }
-                free(data->nome);
-                free(data);
+                free(bloco->nome);
+                free(bloco);
             }
             $$ = fn;
         }
+
     | CRIAR entity_type IDENTIFIER '{' opt_newline attribute_assigns '}' opt_newline
         {
-            char* tipo_entidade_copiado = $2; // $2 é uma string literal, não precisa de free se for constante.
-                                           // Se entity_type retornasse strdup'd string, precisaria de free.
-                                           // No seu caso, entity_type retorna literais como "personagem", então está OK.
-            char* nome_entidade_copiado = $3; // $3 é strdup'd pelo lexer
-            // $6 (attribute_assigns) já lida com a memória dos atributos internamente.
+            char* tipo_entidade_copiado = $2; 
+            char* nome_entidade_copiado = $3; 
             void fn(void) {
+                printf("[DEBUG] Entrou no fn do statement entity_Decl 3\n");
                 char buffer[128];
                 // Aqui você implementaria a lógica para criar a entidade genérica
                 // Por exemplo, adicionando a uma lista de entidades, etc.
@@ -309,6 +348,7 @@ obstaculo_stmt:
     OBSTACULO
         {
             void fn(void) {
+                printf("[DEBUG] Entrou no fn do statement obstaculo\n");
                 print_slow("Um obstáculo apareceu! Pressione Enter para continuar...", 10000);
                 getchar();
             }
@@ -390,6 +430,7 @@ var_decl:
             char* type_name = $3; // String literal de type_decl, não precisa de free
             int val_expr = $5;
             void fn(void) {
+                printf("[DEBUG] Entrou no fn do statement var_decl\n");
                 char buffer[128];
                 set_var(var_name, val_expr); // set_var faz sua própria cópia (strncpy)
                 snprintf(buffer, sizeof(buffer), "Variável definida: %s (%s)", var_name, type_name);
@@ -406,6 +447,7 @@ jogadores_decl:
             char* lista_nome = $1; // Captura o nome da lista (strdup'd pelo lexer)
             char* nomes_jogadores = $4; // String de name_list (malloc'd)
             void fn(void) {
+                printf("[DEBUG] Entrou no fn do statement jogadores\n");
                 char buffer[128];
                 // Se 'lista_nome' fosse usado para armazenar a lista em algum lugar,
                 // a lógica de free seria diferente. Aqui, assumimos que é apenas para o print.
@@ -450,6 +492,7 @@ assign_stmt:
             char* var_name = $1; // Captura o nome da variável (strdup'd pelo lexer)
             int val_expr = $3;
             void fn(void) {
+                printf("[DEBUG] Entrou no fn do statement assign_stmt 1\n");
                 char buffer[128];
                 set_var(var_name, val_expr); // set_var faz sua própria cópia (strncpy)
                 snprintf(buffer, sizeof(buffer), "Variável %s atualizada.", var_name);
@@ -465,6 +508,7 @@ assign_stmt:
             char* a_nome = $1.atributo;
             int val_expr = $3;
             void fn(void) {
+                printf("[DEBUG] Entrou no fn do statement assign_stmt 2\n");
                 char buffer[128];
                 set_personagem_attr(p_nome, a_nome, val_expr); // set_personagem_attr faz cópias (strncpy)
                 snprintf(buffer, sizeof(buffer), "Atributo %s de %s atualizado.", a_nome, p_nome);
@@ -511,15 +555,17 @@ narrate_expr:
     ;
 
 narrate_stmt:
-    NARRAR '(' narrate_expr ')'
-        {
-            void fn(void) {
-                printf("[DEBUG] NARRAR: %s\n", $3);
-                print_slow($3, 10000); free($3);
-            }
-            $$ = fn;
+    NARRAR '(' STRING_LITERAL ')' opt_newline
+    {
+        char* texto = strdup($3);  // DUPLICA AQUI
+        void fn(void) {
+            printf("[DEBUG] Entrou no fn do statement narrate\n");
+            print_slow(texto, 10000);
+            free(texto);  // Libera apenas sua própria cópia
         }
-    ;
+        $$ = fn;
+        free($3);  // Libera o original vindo do lexer
+    }
 
 attr_access:
     IDENTIFIER '.' IDENTIFIER
@@ -535,6 +581,7 @@ if_stmt:
             int cond = $3;
             block_list_t* if_block = $7; // Captura o block_list_t*
             void fn(void) {
+                printf("[DEBUG] Entrou no fn do statement if 1\n");
                 if (cond) {
                     for (int i = 0; i < if_block->count; i++) {
                         if_block->fns[i]();
@@ -550,6 +597,7 @@ if_stmt:
             block_list_t* if_block = $7;   // Captura o block_list_t* do if
             block_list_t* else_block = $12; // Captura o block_list_t* do else
             void fn(void) {
+                printf("[DEBUG] Entrou no fn do statement if 2\n");
                 if (cond) {
                     for (int i = 0; i < if_block->count; i++) {
                         if_block->fns[i]();
@@ -590,6 +638,7 @@ while_stmt:
             // de implementar com este padrão de `void fn(void)`.
             // A correção abaixo foca na memória do bloco.
             void fn(void) {
+                printf("[DEBUG] Entrou no fn do statement while\n");
                 // Esta é uma simplificação. Um while real precisaria reavaliar $3.
                 // if ($3) { // Executa uma vez se a condição inicial for verdadeira
                 //    for (int i = 0; i < loop_block->count; i++) {
