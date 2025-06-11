@@ -1,18 +1,34 @@
 Campanha
 
-// Definindo padrão de personagem
-criar personagem padrao {
+criar personagem Alice {
   vida = 100
   forca = 10
   mana = 50
   inventario = ["espada", "pocao", "escudo"]
 }
 
-// Criando os jogadores com o padrão
-criar personagem padrao Alice
+criar personagem Bob {
+  vida = 100
+  forca = 10
+  mana = 50
+  inventario = ["espada", "pocao", "escudo"]
+}
 
-criar personagem padrao Bob
+criar personagem Clara {
+  vida = 100
+  forca = 10
+  mana = 50
+  inventario = ["espada", "pocao", "escudo"]
+}
 
-criar personagem padrao Clara
+obstaculo
+narre("Um rugido ecoa entre as ruínas. Um monstro aparece!")
+
+criar monstro Golem {
+  vida = 120
+  forca = 15
+}
+
+narre("Vida de Alice após o Golem: " + (100 - rolar_dado(15)))
 
 FimCampanha
