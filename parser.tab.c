@@ -73,7 +73,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "blocks.h"
 
 #define MAX_VARS 256
 #define MAX_PERSONAGENS 64
@@ -86,10 +85,6 @@ typedef struct {
 
 VarEntry var_table[MAX_VARS];
 int var_count = 0;
-
-typedef struct {
-    char* nome;
-} fn_data;
 
 // Função para buscar variável
 int get_var(const char* name) {
@@ -137,33 +132,8 @@ typedef struct {
     char* inventario;
 } Personagem;
 
-typedef struct {
-    char nome[64];
-    struct {
-        char nome[64];
-        int valor;
-    } atributos[MAX_ATTRS];
-    int attr_count;
-    char* inventario;
-} Monstro;
-
-typedef struct {
-    char nome[64];
-    struct {
-        char nome[64];
-        int valor;
-    } atributos[MAX_ATTRS];
-    int attr_count;
-} Item;
-
 Personagem personagens[MAX_PERSONAGENS];
 int personagem_count = 0;
-
-Monstro monstros[MAX_PERSONAGENS];
-int monstro_count = 0;
-
-Item itens[MAX_PERSONAGENS];
-int item_count = 0;
 
 int get_personagem_attr(const char* nome_personagem, const char* nome_attr) {
     for (int i = 0; i < personagem_count; i++) {
@@ -209,90 +179,28 @@ typedef struct {
 } PersonagemPadrao;
 PersonagemPadrao padrao = { { { {0} } }, 0, NULL, 0 };
 
-void criar_personagem(const char* nome, const PersonagemPadrao* padrao) {
-    printf("[DEBUG] criar_personagem: nome=%s, padrao=%p\n", nome, (void*)padrao);
-    printf("[DEBUG] padrao->attr_count=%d\n", padrao->attr_count);
-    printf("[DEBUG] padrao->inventario=%s\n", padrao->inventario ? padrao->inventario : "(null)");
+typedef void (*block_fn_t)(void);
 
+void criar_personagem(const char* nome, PersonagemPadrao* padrao) {
     if (personagem_count < MAX_PERSONAGENS) {
-        // Cópia segura do nome
         strncpy(personagens[personagem_count].nome, nome, 63);
         personagens[personagem_count].nome[63] = '\0';
-
-        // Cópia dos atributos
+        // Copia todos os atributos do padrao para o personagem
         for (int i = 0; i < padrao->attr_count; i++) {
-            printf("[DEBUG] Copiando atributo %d: %s=%d\n", i, padrao->atributos[i].nome, padrao->atributos[i].valor);
             strncpy(personagens[personagem_count].atributos[i].nome, padrao->atributos[i].nome, 63);
             personagens[personagem_count].atributos[i].nome[63] = '\0';
             personagens[personagem_count].atributos[i].valor = padrao->atributos[i].valor;
         }
         personagens[personagem_count].attr_count = padrao->attr_count;
-
-        // Cópia segura do inventário
-        if (padrao->inventario) {
-            personagens[personagem_count].inventario = strdup(padrao->inventario);
-            printf("[DEBUG] Inventario copiado: %s\n", personagens[personagem_count].inventario);
-        } else {
-            personagens[personagem_count].inventario = NULL;
-            printf("[DEBUG] Inventario NULL\n");
-        }
-
+        personagens[personagem_count].inventario = padrao->inventario ? strdup(padrao->inventario) : NULL;
         personagem_count++;
-        printf("[DEBUG] personagem_count agora: %d\n", personagem_count);
-    } else {
-        printf("[DEBUG] Limite de personagens atingido!\n");
     }
 }
-
-void criar_monstro(const char* nome, const PersonagemPadrao* padrao) {
-    printf("[DEBUG] criar_monstro: nome=%s\n", nome);
-
-    if (monstro_count < MAX_PERSONAGENS) {
-        strncpy(monstros[monstro_count].nome, nome, 63);
-        monstros[monstro_count].nome[63] = '\0';
-
-        for (int i = 0; i < padrao->attr_count; i++) {
-            strncpy(monstros[monstro_count].atributos[i].nome, padrao->atributos[i].nome, 63);
-            monstros[monstro_count].atributos[i].nome[63] = '\0';
-            monstros[monstro_count].atributos[i].valor = padrao->atributos[i].valor;
-        }
-        monstros[monstro_count].attr_count = padrao->attr_count;
-
-        if (padrao->inventario) {
-            monstros[monstro_count].inventario = strdup(padrao->inventario);
-        } else {
-            monstros[monstro_count].inventario = NULL;
-        }
-
-        monstro_count++;
-        printf("[DEBUG] monstro_count agora: %d\n", monstro_count);
-    }
-}
-
-void criar_item(const char* nome, const PersonagemPadrao* padrao) {
-    printf("[DEBUG] criar_item: nome=%s\n", nome);
-
-    if (item_count < MAX_PERSONAGENS) {
-        strncpy(itens[item_count].nome, nome, 63);
-        itens[item_count].nome[63] = '\0';
-
-        for (int i = 0; i < padrao->attr_count; i++) {
-            strncpy(itens[item_count].atributos[i].nome, padrao->atributos[i].nome, 63);
-            itens[item_count].atributos[i].nome[63] = '\0';
-            itens[item_count].atributos[i].valor = padrao->atributos[i].valor;
-        }
-        itens[item_count].attr_count = padrao->attr_count;
-
-        item_count++;
-        printf("[DEBUG] item_count agora: %d\n", item_count);
-    }
-}
-
 extern FILE *yyin;
 void yyerror(const char *s);
 int yylex(void);
 
-#line 296 "parser.tab.c"
+#line 204 "parser.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -387,14 +295,13 @@ enum yysymbol_kind_t
   YYSYMBOL_attr_access = 64,               /* attr_access  */
   YYSYMBOL_if_stmt = 65,                   /* if_stmt  */
   YYSYMBOL_while_stmt = 66,                /* while_stmt  */
-  YYSYMBOL_block = 67,                     /* block  */
-  YYSYMBOL_expression = 68,                /* expression  */
-  YYSYMBOL_bexpression = 69,               /* bexpression  */
-  YYSYMBOL_bterm = 70,                     /* bterm  */
-  YYSYMBOL_rexp = 71,                      /* rexp  */
-  YYSYMBOL_expr = 72,                      /* expr  */
-  YYSYMBOL_term = 73,                      /* term  */
-  YYSYMBOL_factor = 74                     /* factor  */
+  YYSYMBOL_expression = 67,                /* expression  */
+  YYSYMBOL_bexpression = 68,               /* bexpression  */
+  YYSYMBOL_bterm = 69,                     /* bterm  */
+  YYSYMBOL_rexp = 70,                      /* rexp  */
+  YYSYMBOL_expr = 71,                      /* expr  */
+  YYSYMBOL_term = 72,                      /* term  */
+  YYSYMBOL_factor = 73                     /* factor  */
 };
 typedef enum yysymbol_kind_t yysymbol_kind_t;
 
@@ -720,18 +627,18 @@ union yyalloc
 #endif /* !YYCOPY_NEEDED */
 
 /* YYFINAL -- State number of the termination state.  */
-#define YYFINAL  22
+#define YYFINAL  5
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   205
+#define YYLAST   185
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  46
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  29
+#define YYNNTS  28
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  73
+#define YYNRULES  72
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  141
+#define YYNSTATES  153
 
 /* YYMAXUTOK -- Last valid token kind.  */
 #define YYMAXUTOK   285
@@ -783,14 +690,14 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,   267,   267,   278,   293,   298,   308,   318,   319,   320,
-     321,   322,   323,   324,   325,   328,   330,   334,   364,   365,
-     366,   370,   382,   383,   387,   411,   429,   431,   449,   467,
-     486,   488,   506,   507,   508,   512,   526,   546,   548,   561,
-     567,   574,   585,   597,   605,   620,   644,   698,   702,   706,
-     707,   711,   712,   716,   717,   718,   719,   720,   724,   725,
-     726,   730,   731,   732,   736,   737,   738,   739,   740,   746,
-     755,   756,   757,   763
+       0,   171,   171,   173,   178,   179,   183,   184,   185,   186,
+     187,   188,   189,   190,   193,   195,   199,   204,   223,   232,
+     233,   234,   238,   246,   247,   251,   272,   286,   288,   298,
+     308,   318,   320,   330,   331,   332,   336,   343,   353,   363,
+     370,   376,   385,   393,   401,   403,   408,   417,   421,   422,
+     426,   427,   431,   432,   433,   434,   435,   439,   440,   441,
+     445,   446,   447,   451,   452,   453,   454,   455,   456,   457,
+     458,   459,   465
 };
 #endif
 
@@ -817,8 +724,7 @@ static const char *const yytname[] =
   "obstaculo_stmt", "attribute_assigns", "attribute_assign", "string_list",
   "var_decl", "jogadores_decl", "name_list", "type_decl", "assign_stmt",
   "narrate_expr", "narrate_stmt", "attr_access", "if_stmt", "while_stmt",
-  "block", "expression", "bexpression", "bterm", "rexp", "expr", "term",
-  "factor", YY_NULLPTR
+  "expression", "bexpression", "bterm", "rexp", "expr", "term", "factor", YY_NULLPTR
 };
 
 static const char *
@@ -828,12 +734,12 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#define YYPACT_NINF (-112)
+#define YYPACT_NINF (-46)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
 
-#define YYTABLE_NINF (-42)
+#define YYTABLE_NINF (-1)
 
 #define yytable_value_is_error(Yyn) \
   0
@@ -842,21 +748,22 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
-      13,   145,    31,   105,    -5,    -3,     5,     7,    10,   173,
-    -112,    24,  -112,  -112,  -112,  -112,  -112,  -112,  -112,    -6,
-    -112,  -112,  -112,  -112,  -112,  -112,    34,    62,    59,   125,
-     125,    77,    48,    54,  -112,  -112,   125,    28,  -112,  -112,
-    -112,    41,   -24,  -112,  -112,  -112,  -112,   125,    40,   125,
-     125,   125,   -14,    -9,    25,   -15,  -112,    49,  -112,    26,
-      60,    70,  -112,   169,    57,    84,  -112,  -112,  -112,  -112,
-    -112,   125,  -112,    90,  -112,  -112,    74,    59,  -112,   125,
-     125,   125,   125,    82,   125,   125,   125,   125,   125,   125,
-      85,  -112,    47,   102,  -112,    81,  -112,  -112,   102,   -15,
-     -15,  -112,  -112,  -112,    70,  -112,    25,    25,    25,    25,
-    -112,  -112,   108,  -112,   -13,  -112,   159,   159,  -112,    91,
-    -112,  -112,   173,    93,    94,   106,   102,   119,  -112,   120,
-    -112,   103,  -112,    51,  -112,  -112,   122,   159,  -112,   104,
-    -112
+      -2,    -3,    15,   -46,    58,   -46,    75,   -46,    98,     8,
+       4,    16,    21,    -6,   -46,   -46,   -46,   -46,   -46,   -46,
+     -46,   -46,    32,   -46,   -46,   -46,    70,   -46,   -46,    56,
+      44,    76,   142,   142,    94,    63,    88,    88,    88,    88,
+      88,    88,   142,    88,    88,    33,    47,   -46,   -46,   -46,
+      74,    84,   -46,   -22,   -46,    84,   -46,   -46,   -46,   142,
+      89,   142,   142,   142,   -46,    96,   117,    93,   -46,    67,
+      77,   -46,   100,   129,   -46,   -46,   -46,   -46,   -46,   -46,
+     -46,   142,    76,   -46,   -46,   132,   -46,   -46,   109,   119,
+     142,   142,   142,   142,   142,   142,   142,   142,   142,   142,
+     120,   -46,    59,    88,    88,    88,   -46,   -46,   114,   -46,
+     -46,    93,   -46,    92,    92,    77,    77,    92,    92,   -46,
+     -46,   -46,   -46,   140,     2,     5,   -46,    88,    88,   -46,
+     122,   -46,   -46,   -46,    14,    20,   123,    88,    88,   151,
+     -46,   149,   -46,   134,   -46,    97,   -46,   -46,   153,    88,
+     -46,    31,   -46
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -864,137 +771,135 @@ static const yytype_int16 yypact[] =
    means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
-       0,     4,     0,     0,     0,     0,     0,     0,     0,     4,
-      21,     0,     6,    12,    11,    13,    14,     8,     7,     0,
-       9,    10,     1,    18,    19,    20,     0,     0,     0,     0,
-       0,     0,     0,     0,     2,     5,     0,     0,    32,    33,
-      34,     0,    68,    37,    67,    70,    71,     0,     0,     0,
-       0,     0,     0,    69,    39,    58,    61,    68,    69,     0,
-      48,    49,    51,    53,     0,     0,    35,    43,     3,    36,
-      15,     0,    66,     0,    64,    65,     0,     0,    15,     0,
+       0,     5,     0,     5,     0,     1,     0,     2,     0,     0,
+       0,     0,     0,     0,    22,     4,    14,    14,    14,    14,
+      14,    14,     0,    14,    14,     3,    19,    20,    21,     0,
+       0,     0,     0,     0,     0,     0,     6,    13,     7,    12,
+       8,     9,     0,    10,    11,     0,     0,    33,    34,    35,
+       0,    40,    38,     0,    41,    67,    66,    69,    70,     0,
+       0,     0,     0,     0,    68,     0,    47,    48,    50,    52,
+      57,    60,     0,     0,    36,    43,    15,    37,    14,    14,
+      14,     0,     0,    42,    65,     0,    63,    64,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,    30,     0,    23,    28,     0,    73,    38,    42,    59,
-      60,    62,    63,    15,    50,    52,    56,    57,    54,    55,
-      15,    29,     0,    16,     0,    72,     4,     4,    31,     0,
-      15,    22,    47,     0,     0,     0,    17,    44,    46,     0,
-      24,     0,    26,     0,    15,    25,     0,     4,    27,     0,
-      45
+       0,    31,     0,    17,    24,    24,    29,    39,     0,    72,
+      14,    49,    51,    55,    56,    58,    59,    53,    54,    61,
+      62,    14,    30,     0,     0,     0,    71,     5,     5,    32,
+       0,    14,    23,    14,     0,     0,     0,    16,    18,    44,
+      46,     0,    25,     0,    27,     0,    14,    26,     0,     5,
+      28,     0,    45
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-    -112,  -112,    36,   -10,   -67,  -112,  -112,  -112,  -112,  -112,
-    -112,  -112,  -112,  -112,  -112,  -112,    67,  -112,    -1,  -112,
-    -112,  -111,   -27,  -112,    83,    66,   -26,    27,   -35
+     -46,   -46,     0,   -46,   -13,   -46,   -46,   -46,    71,   -46,
+     -46,   -46,   -46,   -46,   -46,   -46,    95,   -46,    -4,   -46,
+     -46,   -21,   -46,    85,    87,   -10,    41,   -45
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_uint8 yydefgoto[] =
 {
-       0,     2,   122,    12,    93,    13,    26,    14,   114,   121,
-     133,    15,    16,    92,    41,    17,    52,    18,    58,    20,
-      21,   123,    59,    60,    61,    62,    63,    55,    56
+       0,     2,     4,    15,    36,    16,    29,    17,   124,   132,
+     145,    18,    19,   102,    50,    20,    53,    21,    64,    23,
+      24,    65,    66,    67,    68,    69,    70,    71
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
    positive, shift that token.  If negative, reduce the rule whose
    number is the opposite.  If YYTABLE_NINF, syntax error.  */
-static const yytype_int16 yytable[] =
+static const yytype_uint8 yytable[] =
 {
-      19,    35,    54,    64,    66,   119,   124,   -40,    19,    69,
-      19,    98,    72,    27,    74,    75,     1,    77,    81,    82,
-     -40,    32,   -41,    35,    76,   120,   139,    53,    34,     3,
-      78,    22,    19,    36,     4,   -41,   116,    11,     5,     6,
-      28,     7,     8,   117,    94,    33,   101,   102,    29,    31,
-      30,    54,    37,   126,    10,    32,    79,    80,    68,     3,
-     106,   107,   108,   109,     4,    70,    67,   137,     5,     6,
-      83,     7,     8,    38,    39,    40,    53,    42,    43,    44,
-      71,    45,    46,    73,    10,    84,    47,    48,   111,   112,
-      49,    50,   135,   136,    32,    57,    85,    44,   130,    45,
-      46,    90,    51,    91,    47,    48,    99,   100,    49,    50,
-      95,    23,    35,    24,    25,    19,    19,    65,    96,   103,
-      51,    19,   110,   113,    57,   115,    44,   118,    45,    46,
-     125,   127,   128,    47,    48,   131,    19,    49,    50,   132,
-     134,   138,   140,    57,    97,    44,   129,    45,    46,    51,
-       3,   105,    47,    48,     0,     4,    49,    50,     0,     5,
-       6,     0,     7,     8,     3,     0,     9,   104,    51,     4,
-       0,     0,     0,     5,     6,    10,     7,     8,     3,     0,
-     113,     0,     0,     4,     0,     0,     0,     5,     6,    10,
-       7,     8,     0,    86,     0,     0,     0,     0,    87,     0,
-      79,    80,     0,    10,    88,    89
+      22,     1,    22,     6,    37,    38,    39,    40,    41,    82,
+      43,    44,    72,    74,    84,     5,    86,    87,     3,     8,
+     130,    77,    83,   130,     9,     8,    30,    54,    10,    11,
+       9,    12,    13,    34,    10,    11,     8,    12,    13,    35,
+     131,     9,    88,   133,    14,    10,    11,    31,    12,    13,
+      14,    78,   139,   119,   120,    47,    48,    49,   140,    32,
+     106,    14,     7,     8,    33,   103,   104,   105,     9,   152,
+      79,    42,    10,    11,    46,    12,    13,    45,    54,    25,
+       8,    75,   113,   114,    80,     9,   117,   118,    14,    10,
+      11,    92,    12,    13,    51,    52,    93,   127,    94,    95,
+     122,   123,    96,    97,    26,    14,    27,    28,   128,    76,
+      98,    99,    55,    81,    56,   142,    57,    58,   137,    91,
+     138,    59,    60,    94,    95,    61,    62,   134,   135,    35,
+      22,    22,    85,   149,    73,   115,   116,    63,   147,   148,
+      89,    55,    90,    56,   100,    57,    58,    22,   101,   151,
+      59,    60,   108,   109,    61,    62,   110,   121,   126,   129,
+      55,   136,    56,   141,    57,    58,    63,   143,   144,    59,
+      60,   146,   150,    61,    62,   111,   125,   107,   112,     0,
+       0,     0,     0,     0,     0,    63
 };
 
 static const yytype_int16 yycheck[] =
 {
-       1,    11,    28,    30,    31,    18,   117,    31,     9,    36,
-      11,    78,    47,    18,    49,    50,     3,    31,    33,    34,
-      44,    45,    31,    33,    51,    38,   137,    28,     4,     5,
-      44,     0,    33,    39,    10,    44,   103,     1,    14,    15,
-      43,    17,    18,   110,    71,     9,    81,    82,    43,    39,
-      43,    77,    18,   120,    30,    45,    31,    32,     4,     5,
-      86,    87,    88,    89,    10,    37,    18,   134,    14,    15,
-      44,    17,    18,    11,    12,    13,    77,    18,    19,    20,
-      39,    22,    23,    43,    30,    25,    27,    28,    41,    42,
-      31,    32,    41,    42,    45,    18,    26,    20,   125,    22,
-      23,    44,    43,    19,    27,    28,    79,    80,    31,    32,
-      20,     6,   122,     8,     9,   116,   117,    40,    44,    37,
-      43,   122,    37,    21,    18,    44,    20,    19,    22,    23,
-      39,    38,    38,    27,    28,    16,   137,    31,    32,    19,
-      37,    19,    38,    18,    77,    20,    40,    22,    23,    43,
-       5,    85,    27,    28,    -1,    10,    31,    32,    -1,    14,
-      15,    -1,    17,    18,     5,    -1,    21,    84,    43,    10,
-      -1,    -1,    -1,    14,    15,    30,    17,    18,     5,    -1,
-      21,    -1,    -1,    10,    -1,    -1,    -1,    14,    15,    30,
-      17,    18,    -1,    24,    -1,    -1,    -1,    -1,    29,    -1,
-      31,    32,    -1,    30,    35,    36
+       4,     3,     6,     3,    17,    18,    19,    20,    21,    31,
+      23,    24,    33,    34,    59,     0,    61,    62,    21,     5,
+      18,    42,    44,    18,    10,     5,    18,    31,    14,    15,
+      10,    17,    18,    39,    14,    15,     5,    17,    18,    45,
+      38,    10,    63,    38,    30,    14,    15,    43,    17,    18,
+      30,    18,    38,    98,    99,    11,    12,    13,    38,    43,
+      81,    30,     4,     5,    43,    78,    79,    80,    10,    38,
+      37,    39,    14,    15,    18,    17,    18,     7,    82,     4,
+       5,    18,    92,    93,    37,    10,    96,    97,    30,    14,
+      15,    24,    17,    18,    18,    19,    29,   110,    31,    32,
+      41,    42,    35,    36,     6,    30,     8,     9,   121,    21,
+      33,    34,    18,    39,    20,   136,    22,    23,   131,    26,
+     133,    27,    28,    31,    32,    31,    32,   127,   128,    45,
+     134,   135,    43,   146,    40,    94,    95,    43,    41,    42,
+      44,    18,    25,    20,    44,    22,    23,   151,    19,   149,
+      27,    28,    20,    44,    31,    32,    37,    37,    44,    19,
+      18,    39,    20,    40,    22,    23,    43,    16,    19,    27,
+      28,    37,    19,    31,    32,    90,   105,    82,    91,    -1,
+      -1,    -1,    -1,    -1,    -1,    43
 };
 
 /* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
    state STATE-NUM.  */
 static const yytype_int8 yystos[] =
 {
-       0,     3,    47,     5,    10,    14,    15,    17,    18,    21,
-      30,    48,    49,    51,    53,    57,    58,    61,    63,    64,
-      65,    66,     0,     6,     8,     9,    52,    18,    43,    43,
-      43,    39,    45,    48,     4,    49,    39,    18,    11,    12,
-      13,    60,    18,    19,    20,    22,    23,    27,    28,    31,
-      32,    43,    62,    64,    72,    73,    74,    18,    64,    68,
-      69,    70,    71,    72,    68,    40,    68,    18,     4,    68,
-      37,    39,    74,    43,    74,    74,    68,    31,    44,    31,
-      32,    33,    34,    44,    25,    26,    24,    29,    35,    36,
-      44,    19,    59,    50,    68,    20,    44,    62,    50,    73,
-      73,    74,    74,    37,    70,    71,    72,    72,    72,    72,
-      37,    41,    42,    21,    54,    44,    50,    50,    19,    18,
-      38,    55,    48,    67,    67,    39,    50,    38,    38,    40,
-      68,    16,    19,    56,    37,    41,    42,    50,    19,    67,
-      38
+       0,     3,    47,    21,    48,     0,    48,     4,     5,    10,
+      14,    15,    17,    18,    30,    49,    51,    53,    57,    58,
+      61,    63,    64,    65,    66,     4,     6,     8,     9,    52,
+      18,    43,    43,    43,    39,    45,    50,    50,    50,    50,
+      50,    50,    39,    50,    50,     7,    18,    11,    12,    13,
+      60,    18,    19,    62,    64,    18,    20,    22,    23,    27,
+      28,    31,    32,    43,    64,    67,    68,    69,    70,    71,
+      72,    73,    67,    40,    67,    18,    21,    67,    18,    37,
+      37,    39,    31,    44,    73,    43,    73,    73,    67,    44,
+      25,    26,    24,    29,    31,    32,    35,    36,    33,    34,
+      44,    19,    59,    50,    50,    50,    67,    62,    20,    44,
+      37,    69,    70,    71,    71,    72,    72,    71,    71,    73,
+      73,    37,    41,    42,    54,    54,    44,    50,    50,    19,
+      18,    38,    55,    38,    48,    48,    39,    50,    50,    38,
+      38,    40,    67,    16,    19,    56,    37,    41,    42,    50,
+      19,    48,    38
 };
 
 /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr1[] =
 {
-       0,    46,    47,    47,    48,    48,    48,    49,    49,    49,
-      49,    49,    49,    49,    49,    50,    50,    51,    52,    52,
-      52,    53,    54,    54,    55,    55,    56,    56,    57,    58,
-      59,    59,    60,    60,    60,    61,    61,    62,    62,    62,
-      62,    62,    63,    64,    65,    65,    66,    67,    68,    69,
-      69,    70,    70,    71,    71,    71,    71,    71,    72,    72,
-      72,    73,    73,    73,    74,    74,    74,    74,    74,    74,
-      74,    74,    74,    74
+       0,    46,    47,    47,    48,    48,    49,    49,    49,    49,
+      49,    49,    49,    49,    50,    50,    51,    51,    51,    52,
+      52,    52,    53,    54,    54,    55,    55,    56,    56,    57,
+      58,    59,    59,    60,    60,    60,    61,    61,    62,    62,
+      62,    62,    63,    64,    65,    65,    66,    67,    68,    68,
+      69,    69,    70,    70,    70,    70,    70,    71,    71,    71,
+      72,    72,    72,    73,    73,    73,    73,    73,    73,    73,
+      73,    73,    73
 };
 
 /* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr2[] =
 {
-       0,     2,     3,     4,     0,     2,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     0,     2,     8,     1,     1,
-       1,     1,     2,     0,     3,     5,     1,     3,     5,     5,
-       1,     3,     1,     1,     1,     3,     3,     1,     3,     1,
-       1,     1,     5,     3,     8,    13,     8,     1,     1,     1,
-       3,     1,     3,     1,     3,     3,     3,     3,     1,     3,
-       3,     1,     3,     3,     2,     2,     2,     1,     1,     1,
-       1,     1,     4,     3
+       0,     2,     3,     4,     2,     0,     2,     2,     2,     2,
+       2,     2,     2,     2,     0,     2,     8,     5,     8,     1,
+       1,     1,     1,     2,     0,     3,     5,     1,     3,     5,
+       5,     1,     3,     1,     1,     1,     3,     3,     1,     3,
+       1,     1,     4,     3,     8,    13,     8,     1,     1,     3,
+       1,     3,     1,     3,     3,     3,     3,     1,     3,     3,
+       1,     3,     3,     2,     2,     2,     1,     1,     1,     1,
+       1,     4,     3
 };
 
 
@@ -1458,659 +1363,387 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* program: CAMPANHA statements FIM_CAMPANHA  */
-#line 268 "src/parser.y"
-        {
-            block_list_t* bl = (yyvsp[-1].block_list);
-            for (int i = 0; i < bl->count; i++) {
-                printf("[DEBUG] Executando bloco %d\n", i);
-                bl->fns[i]();
-            }
-            //free(bl);
-            printf("Campanha finalizada!\n");
-            printf("[DEBUG] Fim do programa\n");
-        }
-#line 1473 "parser.tab.c"
+#line 172 "src/parser.y"
+        { printf("Campanha finalizada!\n"); }
+#line 1369 "parser.tab.c"
     break;
 
   case 3: /* program: CAMPANHA NEWLINE statements FIM_CAMPANHA  */
-#line 279 "src/parser.y"
+#line 174 "src/parser.y"
+        { printf("Campanha finalizada!\n"); }
+#line 1375 "parser.tab.c"
+    break;
+
+  case 16: /* entity_decl: CRIAR PERSONAGEM PADRAO '{' opt_newline attribute_assigns '}' opt_newline  */
+#line 200 "src/parser.y"
         {
-            block_list_t* bl = (yyvsp[-1].block_list);
-            for (int i = 0; i < bl->count; i++) {
-                printf("[DEBUG] Executando bloco %d\n", i);
-                bl->fns[i]();
-            }
-            free(bl);
-            printf("Campanha finalizada!\n");
-            printf("[DEBUG] Fim do programa\n");
-        }
-#line 1488 "parser.tab.c"
-    break;
-
-  case 4: /* statements: %empty  */
-#line 293 "src/parser.y"
-        {
-            block_list_t* bl = malloc(sizeof(block_list_t));
-            bl->count = 0;
-            (yyval.block_list) = bl;
-        }
-#line 1498 "parser.tab.c"
-    break;
-
-  case 5: /* statements: statements statement  */
-#line 299 "src/parser.y"
-        {
-            block_list_t* bl = (yyvsp[-1].block_list);
-            if ((yyvsp[0].block_fn)) {
-                if (bl->count < 1024) {
-                    bl->fns[bl->count++] = (yyvsp[0].block_fn);
-                }
-            }
-            (yyval.block_list) = bl;
-        }
-#line 1512 "parser.tab.c"
-    break;
-
-  case 6: /* statements: statement  */
-#line 309 "src/parser.y"
-        {
-            block_list_t* bl = malloc(sizeof(block_list_t));
-            bl->count = 0;
-            if ((yyvsp[0].block_fn)) bl->fns[bl->count++] = (yyvsp[0].block_fn);
-            (yyval.block_list) = bl;
-        }
-#line 1523 "parser.tab.c"
-    break;
-
-  case 7: /* statement: narrate_stmt  */
-#line 318 "src/parser.y"
-                   { (yyval.block_fn) = (yyvsp[0].block_fn); }
-#line 1529 "parser.tab.c"
-    break;
-
-  case 8: /* statement: assign_stmt  */
-#line 319 "src/parser.y"
-                   { (yyval.block_fn) = (yyvsp[0].block_fn); }
-#line 1535 "parser.tab.c"
-    break;
-
-  case 9: /* statement: if_stmt  */
-#line 320 "src/parser.y"
-                   { (yyval.block_fn) = (yyvsp[0].block_fn); }
-#line 1541 "parser.tab.c"
-    break;
-
-  case 10: /* statement: while_stmt  */
-#line 321 "src/parser.y"
-                   { (yyval.block_fn) = (yyvsp[0].block_fn); }
-#line 1547 "parser.tab.c"
-    break;
-
-  case 11: /* statement: obstaculo_stmt  */
-#line 322 "src/parser.y"
-                     { (yyval.block_fn) = (yyvsp[0].block_fn); }
-#line 1553 "parser.tab.c"
-    break;
-
-  case 12: /* statement: entity_decl  */
-#line 323 "src/parser.y"
-                   { (yyval.block_fn) = (yyvsp[0].block_fn); }
-#line 1559 "parser.tab.c"
-    break;
-
-  case 13: /* statement: var_decl  */
-#line 324 "src/parser.y"
-                   { (yyval.block_fn) = (yyvsp[0].block_fn); }
-#line 1565 "parser.tab.c"
-    break;
-
-  case 14: /* statement: jogadores_decl  */
-#line 325 "src/parser.y"
-                     { (yyval.block_fn) = (yyvsp[0].block_fn); }
-#line 1571 "parser.tab.c"
-    break;
-
-  case 17: /* entity_decl: CRIAR entity_type IDENTIFIER '{' opt_newline attribute_assigns '}' opt_newline  */
-#line 335 "src/parser.y"
-        {
-            // Processa imediatamente durante o parsing
             padrao.definido = 1;
-            
-            if (strcmp((yyvsp[-6].str), "personagem") == 0) {
-                criar_personagem((yyvsp[-5].str), &padrao);
-                printf("Personagem %s criado!\n", (yyvsp[-5].str));
-            } else if (strcmp((yyvsp[-6].str), "monstro") == 0) {
-                criar_monstro((yyvsp[-5].str), &padrao);
-                printf("Monstro %s criado!\n", (yyvsp[-5].str));
-            } else if (strcmp((yyvsp[-6].str), "item") == 0) {
-                criar_item((yyvsp[-5].str), &padrao);
-                printf("Item %s criado!\n", (yyvsp[-5].str));
-            }
-            
-            // Limpa o padrao global para próxima entidade
-            memset(&padrao, 0, sizeof(padrao));
-            
-            free((yyvsp[-6].str));
-            free((yyvsp[-5].str));
-            
-            // Retorna uma função vazia
-            void fn(void) {
-                // Função vazia - o processamento já foi feito
-            }
-            (yyval.block_fn) = fn;
+            print_slow("Padrão de personagem definido!", 10000);
         }
-#line 1603 "parser.tab.c"
+#line 1384 "parser.tab.c"
     break;
 
-  case 18: /* entity_type: PERSONAGEM  */
-#line 364 "src/parser.y"
-                 { (yyval.str) = strdup("personagem"); }
-#line 1609 "parser.tab.c"
-    break;
-
-  case 19: /* entity_type: MONSTRO  */
-#line 365 "src/parser.y"
-                 { (yyval.str) = strdup("monstro"); }
-#line 1615 "parser.tab.c"
-    break;
-
-  case 20: /* entity_type: ITEM  */
-#line 366 "src/parser.y"
-                 { (yyval.str) = strdup("item"); }
-#line 1621 "parser.tab.c"
-    break;
-
-  case 21: /* obstaculo_stmt: OBSTACULO  */
-#line 371 "src/parser.y"
+  case 17: /* entity_decl: CRIAR PERSONAGEM PADRAO IDENTIFIER opt_newline  */
+#line 205 "src/parser.y"
         {
-            void fn(void) {
-                printf("[DEBUG] Entrou no fn do statement obstaculo\n");
-                print_slow("Um obstáculo apareceu! Pressione Enter para continuar...", 10000);
-                getchar();
+            if (padrao.definido) {
+                criar_personagem((yyvsp[-1].str), &padrao);
+                char buffer[256];
+                snprintf(buffer, sizeof(buffer), "Personagem %s criado com padrão.", (yyvsp[-1].str));
+                print_slow(buffer, 10000);
+                for (int i = 0; i < padrao.attr_count; i++) {
+                    snprintf(buffer, sizeof(buffer), "  - %s = %d", padrao.atributos[i].nome, padrao.atributos[i].valor);
+                    print_slow(buffer, 10000);
+                }
+                if (padrao.inventario) {
+                    snprintf(buffer, sizeof(buffer), "Inventario: [%s]", padrao.inventario);
+                    print_slow(buffer, 10000);
+                }
+            } else {
+                print_slow("Erro: padrão de personagem não definido!", 10000);
             }
-            (yyval.block_fn) = fn;
         }
-#line 1634 "parser.tab.c"
+#line 1407 "parser.tab.c"
     break;
 
-  case 24: /* attribute_assign: IDENTIFIER '=' expression  */
-#line 388 "src/parser.y"
+  case 18: /* entity_decl: CRIAR entity_type IDENTIFIER '{' opt_newline attribute_assigns '}' opt_newline  */
+#line 224 "src/parser.y"
         {
-            char* attr_name = (yyvsp[-2].str); // Captura o nome do atributo (strdup'd pelo lexer)
             char buffer[128];
+            snprintf(buffer, sizeof(buffer), "Entidade criada: %s (%s)", (yyvsp[-5].str), (yyvsp[-6].str));
+            print_slow(buffer, 10000);
+        }
+#line 1417 "parser.tab.c"
+    break;
 
+  case 19: /* entity_type: PERSONAGEM  */
+#line 232 "src/parser.y"
+                 { (yyval.str) = "personagem"; }
+#line 1423 "parser.tab.c"
+    break;
+
+  case 20: /* entity_type: MONSTRO  */
+#line 233 "src/parser.y"
+                 { (yyval.str) = "monstro"; }
+#line 1429 "parser.tab.c"
+    break;
+
+  case 21: /* entity_type: ITEM  */
+#line 234 "src/parser.y"
+                 { (yyval.str) = "item"; }
+#line 1435 "parser.tab.c"
+    break;
+
+  case 22: /* obstaculo_stmt: OBSTACULO  */
+#line 239 "src/parser.y"
+        {
+            print_slow("Um obstáculo apareceu! Pressione Enter para continuar...", 10000);
+            getchar();
+        }
+#line 1444 "parser.tab.c"
+    break;
+
+  case 25: /* attribute_assign: IDENTIFIER '=' expression  */
+#line 252 "src/parser.y"
+        {
+            char buffer[128];
             // Adiciona/atualiza atributo no padrao
             int found = 0;
             for (int i = 0; i < padrao.attr_count; i++) {
-                if (strcmp(padrao.atributos[i].nome, attr_name) == 0) {
+                if (strcmp(padrao.atributos[i].nome, (yyvsp[-2].str)) == 0) {
                     padrao.atributos[i].valor = (yyvsp[0].int_val);
                     found = 1;
                     break;
                 }
             }
             if (!found && padrao.attr_count < MAX_ATTRS) {
-                strncpy(padrao.atributos[padrao.attr_count].nome, attr_name, 63);
+                strncpy(padrao.atributos[padrao.attr_count].nome, (yyvsp[-2].str), 63);
                 padrao.atributos[padrao.attr_count].nome[63] = '\0';
                 padrao.atributos[padrao.attr_count].valor = (yyvsp[0].int_val);
                 padrao.attr_count++;
             }
-            snprintf(buffer, sizeof(buffer), "  - Atributo %s definido.", attr_name);
+            snprintf(buffer, sizeof(buffer), "  - Atributo %s definido.", (yyvsp[-2].str));
             print_slow(buffer, 10000);
-            free(attr_name); // Libera o nome do atributo
         }
-#line 1662 "parser.tab.c"
+#line 1469 "parser.tab.c"
     break;
 
-  case 25: /* attribute_assign: IDENTIFIER '=' '[' string_list ']'  */
-#line 412 "src/parser.y"
+  case 26: /* attribute_assign: IDENTIFIER '=' '[' string_list ']'  */
+#line 273 "src/parser.y"
         {
-            char* attr_name = (yyvsp[-4].str); // Captura o nome do atributo (strdup'd pelo lexer)
-            char* sl_value = (yyvsp[-1].str);  // Captura o valor da string_list
             char buffer[128];
-
-            if (padrao.definido && strcmp(attr_name, "inventario") == 0) {
+            if (padrao.definido && strcmp((yyvsp[-4].str), "inventario") == 0) {
                 if (padrao.inventario) free(padrao.inventario);
-                padrao.inventario = strdup(sl_value); // padrao.inventario faz sua própria cópia
+                padrao.inventario = strdup((yyvsp[-1].str));
             }
-            snprintf(buffer, sizeof(buffer), "  - Atributo %s definido (lista: %s).", attr_name, sl_value);
+            snprintf(buffer, sizeof(buffer), "  - Atributo %s definido (lista: %s).", (yyvsp[-4].str), (yyvsp[-1].str));
             print_slow(buffer, 10000);
-            free(attr_name); // Libera o nome do atributo
-            free(sl_value);  // Libera a string retornada por string_list
+            free((yyvsp[-1].str));
         }
-#line 1681 "parser.tab.c"
+#line 1484 "parser.tab.c"
     break;
 
-  case 26: /* string_list: STRING_LITERAL  */
-#line 430 "src/parser.y"
-        { (yyval.str) = (yyvsp[0].str); }
-#line 1687 "parser.tab.c"
+  case 27: /* string_list: STRING_LITERAL  */
+#line 287 "src/parser.y"
+        { (yyval.str) = strdup((yyvsp[0].str)); }
+#line 1490 "parser.tab.c"
     break;
 
-  case 27: /* string_list: string_list ',' STRING_LITERAL  */
-#line 432 "src/parser.y"
+  case 28: /* string_list: string_list ',' STRING_LITERAL  */
+#line 289 "src/parser.y"
         {
-            char* prev_list = (yyvsp[-2].str);
-            char* new_item = (yyvsp[0].str);
-            size_t len = strlen(prev_list) + strlen(new_item) + 3; // para ", " e '\0'
+            size_t len = strlen((yyvsp[-2].str)) + strlen((yyvsp[0].str)) + 3;
             (yyval.str) = malloc(len);
-            if ((yyval.str)) {
-                snprintf((yyval.str), len, "%s, %s", prev_list, new_item);
-            } else {
-                yyerror("malloc failed in string_list concatenation");
-                (yyval.str) = strdup(""); // Evitar NULL
-            }
-            free(prev_list); // Libera a lista anterior
-            free(new_item);  // Libera o novo item (que veio do lexer)
+            snprintf((yyval.str), len, "%s, %s", (yyvsp[-2].str), (yyvsp[0].str));
+            free((yyvsp[-2].str));
         }
-#line 1706 "parser.tab.c"
+#line 1501 "parser.tab.c"
     break;
 
-  case 28: /* var_decl: DEFINIR IDENTIFIER type_decl '=' expression  */
-#line 450 "src/parser.y"
+  case 29: /* var_decl: DEFINIR IDENTIFIER type_decl '=' expression  */
+#line 299 "src/parser.y"
         {
-            char* var_name = (yyvsp[-3].str); // Captura o nome da variável (strdup'd pelo lexer)
-            char* type_name = (yyvsp[-2].str); // String literal de type_decl, não precisa de free
-            int val_expr = (yyvsp[0].int_val);
-            void fn(void) {
-                printf("[DEBUG] Entrou no fn do statement var_decl\n");
-                char buffer[128];
-                set_var(var_name, val_expr); // set_var faz sua própria cópia (strncpy)
-                snprintf(buffer, sizeof(buffer), "Variável definida: %s (%s)", var_name, type_name);
-                print_slow(buffer, 10000);
-                free(var_name); // Libera o nome da variável
-            }
-            (yyval.block_fn) = fn;
+            char buffer[128];
+            set_var((yyvsp[-3].str), (yyvsp[0].int_val));
+            snprintf(buffer, sizeof(buffer), "Variável definida: %s (%s)", (yyvsp[-3].str), (yyvsp[-2].str));
+            print_slow(buffer, 10000);
         }
-#line 1725 "parser.tab.c"
+#line 1512 "parser.tab.c"
     break;
 
-  case 29: /* jogadores_decl: IDENTIFIER '=' '[' name_list ']'  */
-#line 468 "src/parser.y"
+  case 30: /* jogadores_decl: IDENTIFIER '=' '[' name_list ']'  */
+#line 309 "src/parser.y"
         {
-            char* lista_nome = (yyvsp[-4].str); // Captura o nome da lista (strdup'd pelo lexer)
-            char* nomes_jogadores = (yyvsp[-1].str); // String de name_list (malloc'd)
-            void fn(void) {
-                printf("[DEBUG] Entrou no fn do statement jogadores\n");
-                char buffer[128];
-                // Se 'lista_nome' fosse usado para armazenar a lista em algum lugar,
-                // a lógica de free seria diferente. Aqui, assumimos que é apenas para o print.
-                snprintf(buffer, sizeof(buffer), "Jogadores definidos para a lista '%s': %s", lista_nome, nomes_jogadores);
-                print_slow(buffer, 10000);
-                free(lista_nome); // Libera o nome da lista
-                free(nomes_jogadores); // Libera a string concatenada de name_list
-            }
-            (yyval.block_fn) = fn;
+            char buffer[128];
+            snprintf(buffer, sizeof(buffer), "Jogadores definidos: %s", (yyvsp[-1].str));
+            print_slow(buffer, 10000);
+            free((yyvsp[-1].str));
         }
-#line 1745 "parser.tab.c"
+#line 1523 "parser.tab.c"
     break;
 
-  case 30: /* name_list: STRING_LITERAL  */
-#line 487 "src/parser.y"
-        { (yyval.str) = (yyvsp[0].str); }
-#line 1751 "parser.tab.c"
+  case 31: /* name_list: STRING_LITERAL  */
+#line 319 "src/parser.y"
+        { (yyval.str) = strdup((yyvsp[0].str)); }
+#line 1529 "parser.tab.c"
     break;
 
-  case 31: /* name_list: name_list ',' STRING_LITERAL  */
-#line 489 "src/parser.y"
+  case 32: /* name_list: name_list ',' STRING_LITERAL  */
+#line 321 "src/parser.y"
         {
-            char* prev_list = (yyvsp[-2].str);
-            char* new_item = (yyvsp[0].str);
-            size_t len = strlen(prev_list) + strlen(new_item) + 3; // para ", " e '\0'
+            size_t len = strlen((yyvsp[-2].str)) + strlen((yyvsp[0].str)) + 3;
             (yyval.str) = malloc(len);
-            if ((yyval.str)) {
-                snprintf((yyval.str), len, "%s, %s", prev_list, new_item);
-            } else {
-                yyerror("malloc failed in name_list concatenation");
-                (yyval.str) = strdup(""); // Evitar NULL
-            }
-            free(prev_list); // Libera a lista anterior
-            free(new_item);  // Libera o novo item (que veio do lexer e foi copiado para $$)
+            snprintf((yyval.str), len, "%s, %s", (yyvsp[-2].str), (yyvsp[0].str));
+            free((yyvsp[-2].str));
         }
-#line 1770 "parser.tab.c"
+#line 1540 "parser.tab.c"
     break;
 
-  case 32: /* type_decl: INT  */
-#line 506 "src/parser.y"
+  case 33: /* type_decl: INT  */
+#line 330 "src/parser.y"
            { (yyval.str) = "int"; }
-#line 1776 "parser.tab.c"
+#line 1546 "parser.tab.c"
     break;
 
-  case 33: /* type_decl: STRING  */
-#line 507 "src/parser.y"
+  case 34: /* type_decl: STRING  */
+#line 331 "src/parser.y"
              { (yyval.str) = "string"; }
-#line 1782 "parser.tab.c"
+#line 1552 "parser.tab.c"
     break;
 
-  case 34: /* type_decl: BOOL  */
-#line 508 "src/parser.y"
+  case 35: /* type_decl: BOOL  */
+#line 332 "src/parser.y"
              { (yyval.str) = "bool"; }
-#line 1788 "parser.tab.c"
+#line 1558 "parser.tab.c"
     break;
 
-  case 35: /* assign_stmt: IDENTIFIER '=' expression  */
-#line 513 "src/parser.y"
+  case 36: /* assign_stmt: IDENTIFIER '=' expression  */
+#line 337 "src/parser.y"
         {
-            char* var_name = (yyvsp[-2].str); // Captura o nome da variável (strdup'd pelo lexer)
-            int val_expr = (yyvsp[0].int_val);
-            void fn(void) {
-                printf("[DEBUG] Entrou no fn do statement assign_stmt 1\n");
-                char buffer[128];
-                set_var(var_name, val_expr); // set_var faz sua própria cópia (strncpy)
-                snprintf(buffer, sizeof(buffer), "Variável %s atualizada.", var_name);
-                print_slow(buffer, 10000);
-                free(var_name); // Libera o nome da variável
-            }
-            (yyval.block_fn) = fn;
+            char buffer[128];
+            set_var((yyvsp[-2].str), (yyvsp[0].int_val));
+            snprintf(buffer, sizeof(buffer), "Variável %s atualizada.", (yyvsp[-2].str));
+            print_slow(buffer, 10000);
         }
-#line 1806 "parser.tab.c"
+#line 1569 "parser.tab.c"
     break;
 
-  case 36: /* assign_stmt: attr_access '=' expression  */
-#line 527 "src/parser.y"
+  case 37: /* assign_stmt: attr_access '=' expression  */
+#line 344 "src/parser.y"
         {
-            // $1 é par_nome_attr. $1.personagem e $1.atributo são strdup'd pelo lexer
-            char* p_nome = (yyvsp[-2].par_nome_attr).personagem;
-            char* a_nome = (yyvsp[-2].par_nome_attr).atributo;
-            int val_expr = (yyvsp[0].int_val);
-            void fn(void) {
-                printf("[DEBUG] Entrou no fn do statement assign_stmt 2\n");
-                char buffer[128];
-                set_personagem_attr(p_nome, a_nome, val_expr); // set_personagem_attr faz cópias (strncpy)
-                snprintf(buffer, sizeof(buffer), "Atributo %s de %s atualizado.", a_nome, p_nome);
-                print_slow(buffer, 10000);
-                free(p_nome); // Libera o nome do personagem
-                free(a_nome);   // Libera o nome do atributo
-            }
-            (yyval.block_fn) = fn;
+            char buffer[128];
+            set_personagem_attr((yyvsp[-2].par_nome_attr).personagem, (yyvsp[-2].par_nome_attr).atributo, (yyvsp[0].int_val));
+            snprintf(buffer, sizeof(buffer), "Atributo %s de %s atualizado.", (yyvsp[-2].par_nome_attr).atributo, (yyvsp[-2].par_nome_attr).personagem);
+            print_slow(buffer, 10000);
         }
-#line 1827 "parser.tab.c"
+#line 1580 "parser.tab.c"
     break;
 
-  case 37: /* narrate_expr: STRING_LITERAL  */
-#line 547 "src/parser.y"
-        { (yyval.str) = (yyvsp[0].str); }
-#line 1833 "parser.tab.c"
+  case 38: /* narrate_expr: STRING_LITERAL  */
+#line 354 "src/parser.y"
+        { 
+            char *txt = (yyvsp[0].str);
+            if(txt && txt[0] == '"' && txt[strlen(txt)-1] == '"') {
+                txt[strlen(txt)-1] = 0;
+                (yyval.str) = strdup(txt+1);
+            } else {
+                (yyval.str) = strdup(txt);
+            }
+        }
+#line 1594 "parser.tab.c"
     break;
 
-  case 38: /* narrate_expr: narrate_expr '+' narrate_expr  */
-#line 549 "src/parser.y"
+  case 39: /* narrate_expr: narrate_expr '+' narrate_expr  */
+#line 364 "src/parser.y"
         {
             size_t len = strlen((yyvsp[-2].str)) + strlen((yyvsp[0].str)) + 1;
             (yyval.str) = malloc(len);
-            if ((yyval.str)) {
-                snprintf((yyval.str), len, "%s%s", (yyvsp[-2].str), (yyvsp[0].str));
-            } else {
-                yyerror("malloc failed in narrate_expr concatenation");
-                (yyval.str) = strdup("");
-            }
-            free((yyvsp[-2].str));
-            free((yyvsp[0].str));
+            snprintf((yyval.str), len, "%s%s", (yyvsp[-2].str), (yyvsp[0].str));
+            free((yyvsp[-2].str)); free((yyvsp[0].str));
         }
-#line 1850 "parser.tab.c"
-    break;
-
-  case 39: /* narrate_expr: expr  */
-#line 562 "src/parser.y"
-        {
-            char buffer[128];
-            sprintf(buffer, "%d", (yyvsp[0].int_val)); // $1 é o valor da expressão aritmética
-            (yyval.str) = strdup(buffer);
-        }
-#line 1860 "parser.tab.c"
+#line 1605 "parser.tab.c"
     break;
 
   case 40: /* narrate_expr: IDENTIFIER  */
-#line 568 "src/parser.y"
+#line 371 "src/parser.y"
         {
-            char buffer[128];
+            char buffer[32];
             sprintf(buffer, "%d", get_var((yyvsp[0].str)));
             (yyval.str) = strdup(buffer);
-            free((yyvsp[0].str));
         }
-#line 1871 "parser.tab.c"
+#line 1615 "parser.tab.c"
     break;
 
   case 41: /* narrate_expr: attr_access  */
-#line 575 "src/parser.y"
+#line 377 "src/parser.y"
         {
-            char buffer[128];
+            char buffer[32];
             sprintf(buffer, "%d", get_personagem_attr((yyvsp[0].par_nome_attr).personagem, (yyvsp[0].par_nome_attr).atributo));
             (yyval.str) = strdup(buffer);
-            free((yyvsp[0].par_nome_attr).personagem);
-            free((yyvsp[0].par_nome_attr).atributo);
         }
-#line 1883 "parser.tab.c"
+#line 1625 "parser.tab.c"
     break;
 
-  case 42: /* narrate_stmt: NARRAR '(' narrate_expr ')' opt_newline  */
-#line 586 "src/parser.y"
-    {
-        char* texto = (yyvsp[-2].str); // $3 já é malloc'd e pronto para uso
-
-        void fn(void) {
-            printf("[DEBUG] Entrou no fn do statement narrate\n");
-            print_slow(texto, 10000);
+  case 42: /* narrate_stmt: NARRAR '(' narrate_expr ')'  */
+#line 386 "src/parser.y"
+        {
+            print_slow((yyvsp[-1].str), 10000); // 10ms por caractere
+            free((yyvsp[-1].str));
         }
-        (yyval.block_fn) = fn;
-    }
-#line 1897 "parser.tab.c"
+#line 1634 "parser.tab.c"
     break;
 
   case 43: /* attr_access: IDENTIFIER '.' IDENTIFIER  */
-#line 598 "src/parser.y"
+#line 394 "src/parser.y"
         {
             (yyval.par_nome_attr).personagem = (yyvsp[-2].str);
             (yyval.par_nome_attr).atributo = (yyvsp[0].str);
         }
-#line 1906 "parser.tab.c"
+#line 1643 "parser.tab.c"
     break;
 
-  case 44: /* if_stmt: SE '(' expression ')' '{' opt_newline block '}'  */
-#line 606 "src/parser.y"
-        {
-            int cond = (yyvsp[-5].int_val);
-            block_list_t* if_block = (yyvsp[-1].block_list); // Captura o block_list_t*
-            void fn(void) {
-                printf("[DEBUG] Entrou no fn do statement if 1\n");
-                if (cond) {
-                    for (int i = 0; i < if_block->count; i++) {
-                        if_block->fns[i]();
-                    }
-                }
-                free(if_block); // Libera o block_list_t do corpo do if
-            }
-            (yyval.block_fn) = fn;
-        }
-#line 1925 "parser.tab.c"
+  case 44: /* if_stmt: SE '(' expression ')' '{' opt_newline statements '}'  */
+#line 402 "src/parser.y"
+        { if ((yyvsp[-5].int_val)) ; }
+#line 1649 "parser.tab.c"
     break;
 
-  case 45: /* if_stmt: SE '(' expression ')' '{' opt_newline block '}' SENAO '{' opt_newline block '}'  */
-#line 621 "src/parser.y"
-        {
-            int cond = (yyvsp[-10].int_val);
-            block_list_t* if_block = (yyvsp[-6].block_list);   // Captura o block_list_t* do if
-            block_list_t* else_block = (yyvsp[-1].block_list); // Captura o block_list_t* do else
-            void fn(void) {
-                printf("[DEBUG] Entrou no fn do statement if 2\n");
-                if (cond) {
-                    for (int i = 0; i < if_block->count; i++) {
-                        if_block->fns[i]();
-                    }
-                } else {
-                    for (int i = 0; i < else_block->count; i++) {
-                        else_block->fns[i]();
-                    }
-                }
-                free(if_block);   // Libera o block_list_t do corpo do if
-                free(else_block); // Libera o block_list_t do corpo do else
-            }
-            (yyval.block_fn) = fn;
-        }
-#line 1950 "parser.tab.c"
+  case 45: /* if_stmt: SE '(' expression ')' '{' opt_newline statements '}' SENAO '{' opt_newline statements '}'  */
+#line 404 "src/parser.y"
+        { if ((yyvsp[-10].int_val)) ; else ; }
+#line 1655 "parser.tab.c"
     break;
 
-  case 46: /* while_stmt: ENQUANTO '(' expression ')' '{' opt_newline block '}'  */
-#line 645 "src/parser.y"
-        {
-            // A expressão $3 pode precisar ser reavaliada a cada iteração.
-            // Se a expressão em si não aloca memória que precisa ser liberada por iteração,
-            // e os IDENTIFIERs dentro dela são tratados pelo 'factor', está OK.
-            // O $7 é o block_list_t* do corpo.
-            block_list_t* loop_block = (yyvsp[-1].block_list); // Captura o block_list_t*
-            // Para reavaliar a condição, precisaríamos de uma forma de re-executar a lógica de $3.
-            // A forma como 'expression' está definida (retornando int_val) não permite
-            // reavaliação direta sem re-parsear ou ter uma função para a expressão.
-            // Assumindo que $3 é avaliado uma vez para o propósito desta estrutura de `fn`.
-            // Para um `while` real, a condição ($3) precisaria ser uma função ou re-avaliada.
-            // Para simplificar e manter a estrutura atual de `fn`:
-            // Esta implementação de while com `fn` só executará o loop com base na avaliação inicial de $3.
-            // Para um while dinâmico, a estrutura da ação precisaria ser diferente,
-            // possivelmente não retornando uma única `fn` para o statement list,
-            // ou a `fn` precisaria de acesso para re-avaliar a expressão.
-
-            // Dada a estrutura atual, vamos focar em liberar o loop_block.
-            // A lógica do while em si, com reavaliação da condição, é mais complexa
-            // de implementar com este padrão de `void fn(void)`.
-            // A correção abaixo foca na memória do bloco.
-            void fn(void) {
-                printf("[DEBUG] Entrou no fn do statement while\n");
-                // Esta é uma simplificação. Um while real precisaria reavaliar $3.
-                // if ($3) { // Executa uma vez se a condição inicial for verdadeira
-                //    for (int i = 0; i < loop_block->count; i++) {
-                //        loop_block->fns[i]();
-                //    }
-                // }
-                // Para um while que realmente itera, a lógica seria:
-                // while (evaluate_expression_again_somehow($3_original_syntax_tree_or_function)) { // Placeholder
-                //     for (int i = 0; i < loop_block->count; i++) {
-                //         loop_block->fns[i]();
-                //     }
-                //}
-                // Como não temos evaluate_expression_again_somehow, e $3 é só um int aqui:
-                // A implementação atual do while só pode verificar a condição uma vez.
-                // Se você quer um loop real, a gramática/ações para 'expression' e 'while_stmt'
-                // precisariam ser mais sofisticadas (ex: expression retorna uma função que avalia).
-
-                // Focando na memória do bloco $7:
-                // Se o while fosse executado, o bloco seria usado.
-                // Independentemente de quantas vezes (ou se) o loop roda, o bloco precisa ser liberado.
-                // A lógica de execução do loop está comentada porque $3 é um int fixo aqui.
-                // Se você tem uma forma de reavaliar a expressão, descomente e adapte.
-                // Por agora, apenas liberamos o bloco.
-                free(loop_block);
-            }
-            (yyval.block_fn) = fn;
-        }
-#line 2005 "parser.tab.c"
+  case 46: /* while_stmt: ENQUANTO '(' expression ')' '{' opt_newline statements '}'  */
+#line 409 "src/parser.y"
+        { while ((yyvsp[-5].int_val)) { /* statements já executaram */ } }
+#line 1661 "parser.tab.c"
     break;
 
-  case 47: /* block: statements  */
-#line 698 "src/parser.y"
-               { (yyval.block_list) = (yyvsp[0].block_list); }
-#line 2011 "parser.tab.c"
-    break;
-
-  case 59: /* expr: expr '+' term  */
-#line 725 "src/parser.y"
+  case 58: /* expr: expr '+' term  */
+#line 440 "src/parser.y"
                     { (yyval.int_val) = (yyvsp[-2].int_val) + (yyvsp[0].int_val); }
-#line 2017 "parser.tab.c"
+#line 1667 "parser.tab.c"
     break;
 
-  case 60: /* expr: expr '-' term  */
-#line 726 "src/parser.y"
+  case 59: /* expr: expr '-' term  */
+#line 441 "src/parser.y"
                     { (yyval.int_val) = (yyvsp[-2].int_val) - (yyvsp[0].int_val); }
-#line 2023 "parser.tab.c"
+#line 1673 "parser.tab.c"
     break;
 
-  case 62: /* term: term '*' factor  */
-#line 731 "src/parser.y"
+  case 61: /* term: term '*' factor  */
+#line 446 "src/parser.y"
                       { (yyval.int_val) = (yyvsp[-2].int_val) * (yyvsp[0].int_val); }
-#line 2029 "parser.tab.c"
+#line 1679 "parser.tab.c"
     break;
 
-  case 63: /* term: term '/' factor  */
-#line 732 "src/parser.y"
+  case 62: /* term: term '/' factor  */
+#line 447 "src/parser.y"
                       { (yyval.int_val) = (yyvsp[-2].int_val) / (yyvsp[0].int_val); }
-#line 2035 "parser.tab.c"
+#line 1685 "parser.tab.c"
     break;
 
-  case 64: /* factor: '+' factor  */
-#line 736 "src/parser.y"
+  case 63: /* factor: '+' factor  */
+#line 451 "src/parser.y"
                        { (yyval.int_val) = +(yyvsp[0].int_val); }
-#line 2041 "parser.tab.c"
+#line 1691 "parser.tab.c"
     break;
 
-  case 65: /* factor: '-' factor  */
-#line 737 "src/parser.y"
+  case 64: /* factor: '-' factor  */
+#line 452 "src/parser.y"
                        { (yyval.int_val) = -(yyvsp[0].int_val); }
-#line 2047 "parser.tab.c"
+#line 1697 "parser.tab.c"
     break;
 
-  case 66: /* factor: NAO factor  */
-#line 738 "src/parser.y"
+  case 65: /* factor: NAO factor  */
+#line 453 "src/parser.y"
                        { (yyval.int_val) = !(yyvsp[0].int_val); }
-#line 2053 "parser.tab.c"
+#line 1703 "parser.tab.c"
     break;
 
-  case 67: /* factor: INTEGER  */
-#line 739 "src/parser.y"
-                       { (yyval.int_val) = (yyvsp[0].int_val); }
-#line 2059 "parser.tab.c"
+  case 67: /* factor: IDENTIFIER  */
+#line 455 "src/parser.y"
+                       { (yyval.int_val) = get_var((yyvsp[0].str)); }
+#line 1709 "parser.tab.c"
     break;
 
-  case 68: /* factor: IDENTIFIER  */
-#line 741 "src/parser.y"
-        {
-            char* name = (yyvsp[0].str); // strdup'd pelo lexer
-            (yyval.int_val) = get_var(name);
-            free(name); // Libera o nome da variável
-        }
-#line 2069 "parser.tab.c"
+  case 68: /* factor: attr_access  */
+#line 456 "src/parser.y"
+                       { (yyval.int_val) = get_personagem_attr((yyvsp[0].par_nome_attr).personagem, (yyvsp[0].par_nome_attr).atributo); }
+#line 1715 "parser.tab.c"
     break;
 
-  case 69: /* factor: attr_access  */
-#line 747 "src/parser.y"
-        {
-            // $1 é par_nome_attr. $1.personagem e $1.atributo são strdup'd pelo lexer
-            char* p_nome = (yyvsp[0].par_nome_attr).personagem;
-            char* a_nome = (yyvsp[0].par_nome_attr).atributo;
-            (yyval.int_val) = get_personagem_attr(p_nome, a_nome);
-            free(p_nome); // Libera o nome do personagem
-            free(a_nome);   // Libera o nome do atributo
-        }
-#line 2082 "parser.tab.c"
-    break;
-
-  case 70: /* factor: VERDADEIRO  */
-#line 755 "src/parser.y"
+  case 69: /* factor: VERDADEIRO  */
+#line 457 "src/parser.y"
                        { (yyval.int_val) = 1; }
-#line 2088 "parser.tab.c"
+#line 1721 "parser.tab.c"
     break;
 
-  case 71: /* factor: FALSO  */
-#line 756 "src/parser.y"
+  case 70: /* factor: FALSO  */
+#line 458 "src/parser.y"
                        { (yyval.int_val) = 0; }
-#line 2094 "parser.tab.c"
+#line 1727 "parser.tab.c"
     break;
 
-  case 72: /* factor: ROLAR_DADO '(' INTEGER ')'  */
-#line 758 "src/parser.y"
+  case 71: /* factor: ROLAR_DADO '(' INTEGER ')'  */
+#line 460 "src/parser.y"
         {
             int resultado = (rand() % (yyvsp[-1].int_val)) + 1;
             printf("Rolagem de dado d%d: %d\n", (yyvsp[-1].int_val), resultado);
             (yyval.int_val) = resultado;
         }
-#line 2104 "parser.tab.c"
+#line 1737 "parser.tab.c"
     break;
 
-  case 73: /* factor: '(' expression ')'  */
-#line 763 "src/parser.y"
+  case 72: /* factor: '(' expression ')'  */
+#line 465 "src/parser.y"
                          { (yyval.int_val) = (yyvsp[-1].int_val); }
-#line 2110 "parser.tab.c"
+#line 1743 "parser.tab.c"
     break;
 
 
-#line 2114 "parser.tab.c"
+#line 1747 "parser.tab.c"
 
       default: break;
     }
@@ -2303,7 +1936,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 766 "src/parser.y"
+#line 468 "src/parser.y"
 
 
 void yyerror(const char *s) {

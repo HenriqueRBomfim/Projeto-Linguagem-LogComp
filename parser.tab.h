@@ -90,18 +90,16 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 226 "src/parser.y"
+#line 144 "src/parser.y"
 
     char* str;
     int int_val;
-    void (*block_fn)(void);
-    block_list_t* block_list;
     struct {
         char* personagem;
         char* atributo;
     } par_nome_attr;
 
-#line 105 "parser.tab.h"
+#line 103 "parser.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
