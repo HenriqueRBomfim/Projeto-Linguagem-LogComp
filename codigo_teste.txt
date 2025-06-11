@@ -1,6 +1,0 @@
-Campanha
-criar personagem hero {
-    definir health int = 100
-}
-narre("Hero created")
-FimCampanha

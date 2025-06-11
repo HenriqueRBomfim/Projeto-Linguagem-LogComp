@@ -1,6 +1,62 @@
 Campanha
-criar personagem hero {
-    definir health int = 100
+
+// Definindo padrão de personagem
+criar personagem padrao {
+  vida = 100
+  forca = 10
+  mana = 50
+  inventario = ["espada", "pocao", "escudo"]
 }
-narre("Hero created")
+
+// Criando os jogadores com o padrão
+criar personagem padrao Alice
+criar personagem padrao Bob
+criar personagem padrao Clara
+
+// Lista de jogadores
+jogadores = ["Alice", "Bob", "Clara"]
+
+// Começo da narrativa
+narre("Os heróis chegaram a uma antiga arena, onde foram desafiados por guerreiros fantasmas.")
+
+// Simulando batalha (os jogadores perdem vida)
+Alice.vida = Alice.vida - rolar_dado(100)
+narre("Vida de Alice após o ataque: " + Alice.vida)
+Bob.vida = Bob.vida - rolar_dado(100)
+narre("Vida de Bob após o ataque: " + Bob.vida)
+Clara.vida = Clara.vida - rolar_dado(100)
+narre("Vida de Clara após o ataque: " + Clara.vida)
+
+narre("Após a batalha, os heróis saem feridos, mas triunfantes...")
+
+// Obstáculo narrativo
+obstaculo
+narre("Um rugido ecoa entre as ruínas. Um monstro aparece!")
+
+// Criando o monstro
+criar monstro Golem {
+  vida = 120
+  forca = 15
+}
+
+// Nova rodada de combate (simulação de mais dano)
+Alice.vida = Alice.vida - rolar_dado(100)
+narre("Vida de Alice após o Golem: " + Alice.vida)
+Bob.vida = Bob.vida - rolar_dado(100)
+narre("Vida de Bob após o Golem: " + Bob.vida)
+Clara.vida = Clara.vida - rolar_dado(100)
+narre("Vida de Clara após o Golem: " + Clara.vida)
+
+se (Alice.vida > 0 e Bob.vida > 0 e Clara.vida > 0) {
+    narre("A luta contra o Golem foi brutal, mas os heróis sobreviveram...")
+} senao {
+    narre("Nem todos sobreviveram, mas os mais fortes continuarão a batalha")
+}
+
+// Relatório final de vida
+narre("Estado final dos heróis:")
+narre(" - Alice: vida = " + Alice.vida)
+narre(" - Bob: vida = " + Bob.vida)
+narre(" - Clara: vida = " + Clara.vida)
+
 FimCampanha

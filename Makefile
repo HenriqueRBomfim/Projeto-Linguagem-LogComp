@@ -1,19 +1,24 @@
-all: main
+CC = gcc
+CFLAGS = -Wall -g -Isrc
+LEX = flex
+YACC = bison
+LEX_SRC = src/lexer.l
+YACC_SRC = src/parser.y
+MAIN_SRC = src/main.c
+OUTPUT = rpgmakerlang
 
-main: lexer.o parser.o main.o
-	gcc -o main lexer.o parser.o main.o -lfl
+all: $(OUTPUT)
 
-lexer.o: src/lexer.l
-	flex src/lexer.l
-	mv lex.yy.c src/lexer.c
-	gcc -c src/lexer.c
+$(OUTPUT): $(MAIN_SRC) lex.yy.c parser.tab.c
+	$(CC) $(CFLAGS) -o $(OUTPUT) $(MAIN_SRC) lex.yy.c parser.tab.c
 
-parser.o: src/parser.y
-	bison -d src/parser.y
-	gcc -c src/parser.tab.c
+lex.yy.c: $(LEX_SRC)
+	$(LEX) $(LEX_SRC)
 
-main.o: src/main.c
-	gcc -c src/main.c
+parser.tab.c: $(YACC_SRC)
+	$(YACC) -d $(YACC_SRC)
 
 clean:
-	rm -f *.o main src/parser.tab.c src/parser.tab.h src/lexer.c
+	rm -f $(OUTPUT) lex.yy.c parser.tab.c parser.tab.h
+
+.PHONY: all clean

@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "parser.tab.h": "c",
+        "blocks.h": "c",
+        "stdio.h": "c"
+    }
+}
